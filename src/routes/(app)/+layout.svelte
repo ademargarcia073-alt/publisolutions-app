@@ -1,14 +1,15 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import TabBar from '$lib/components/TabBar.svelte';
+	import type { LayoutData } from './$types';
 
-	let { children }: { children: Snippet } = $props();
+	let { children, data }: { children: Snippet; data: LayoutData } = $props();
 </script>
 
 <div class="app-content">
 	{@render children()}
 </div>
-<TabBar />
+<TabBar permisos={data.permisos} />
 
 <style>
 	.app-content {

@@ -1,16 +1,32 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import type { Permisos } from '$lib/server/permissions';
+
+	let { permisos }: { permisos: Permisos } = $props();
 
 	// Spec sección 1 (1.0): "Nav inferior: Inicio · Nueva orden · Todas las órdenes"
-	const tabs = [
-		{ href: '/', label: 'Inicio', match: (p: string) => p === '/' },
-		{ href: '/ordenes/nueva', label: 'Nueva orden', match: (p: string) => p === '/ordenes/nueva' },
+	// "Nueva orden" se oculta para quien no puede crear órdenes (sección 2:
+	// un admin que no es también vendedor no puede) — mismo chequeo que
+	// puedeCrearOrden() en $lib/server/orders/permissions.ts, inlineado acá
+	// porque ese módulo es server-only y no puede importarse en un componente.
+	// Sin esto, tocar el tab redirige en silencio de vuelta al dashboard
+	// (mismo punto de partida) y da la impresión de que el tab no hace nada.
+	const allTabs = [
+		{ href: '/', label: 'Inicio', match: (p: string) => p === '/', visible: () => true },
+		{
+			href: '/ordenes/nueva',
+			label: 'Nueva orden',
+			match: (p: string) => p === '/ordenes/nueva',
+			visible: () => permisos.esVendedor
+		},
 		{
 			href: '/ordenes',
 			label: 'Todas las órdenes',
-			match: (p: string) => p === '/ordenes' || (p.startsWith('/ordenes/') && p !== '/ordenes/nueva')
+			match: (p: string) => p === '/ordenes' || (p.startsWith('/ordenes/') && p !== '/ordenes/nueva'),
+			visible: () => true
 		}
 	];
+	const tabs = $derived(allTabs.filter((tab) => tab.visible()));
 </script>
 
 <nav class="tab-bar">
