@@ -1,10 +1,47 @@
-/* Minimal reset. Design tokens (colores, tipografía) llegan con
-   /design-consultation — no se fijan acá para no anticipar decisiones de marca. */
+/* Tokens de diseño — PLACEHOLDER neutro. Valores reales llegan con
+   /design-consultation; lo que importa acá son los NOMBRES de variable, que
+   los componentes en $lib/components ya consumen. */
+:root {
+	--font-body: system-ui, sans-serif;
+
+	--color-bg: oklch(0.965 0.004 230);
+	--color-surface: white;
+	--color-border-card: oklch(0.9 0.01 230);
+	--color-border-input: oklch(0.85 0.012 230);
+
+	--color-text: oklch(0.18 0.01 90);
+	--color-text-secondary: oklch(0.45 0.01 90);
+	--color-text-meta: oklch(0.5 0.01 90);
+
+	--color-accent: oklch(0.55 0.14 230);
+	--color-accent-hover: oklch(0.45 0.14 230);
+	--color-btn-secondary-bg: oklch(0.93 0.01 230);
+	--color-btn-secondary-text: oklch(0.3 0.02 230);
+	--color-btn-disabled-bg: oklch(0.96 0.004 230);
+	--color-btn-disabled-text: oklch(0.65 0.01 90);
+
+	--color-error: oklch(0.58 0.17 25);
+	--color-error-bg: oklch(0.58 0.17 25 / 0.06);
+
+	--radius-screen-card: 28px;
+	--radius-panel-card: 20px;
+	--radius-component: 10px;
+	--radius-pill: 20px;
+
+	--shadow-card: 0 12px 30px -12px oklch(0.3 0.02 230 / 0.15);
+}
+
 * {
 	box-sizing: border-box;
 }
 
 body {
 	margin: 0;
-	font-family: system-ui, sans-serif;
+	background: var(--color-bg);
+	font-family: var(--font-body);
+	color: var(--color-text);
+}
+
+input::placeholder {
+	color: oklch(0.65 0.01 90);
 }
