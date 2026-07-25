@@ -109,31 +109,39 @@ transición de estado desde el día 1, evitando el bug más caro (lógica de est
 duplicada) sin pagar la complejidad de colas/outbox que el equipo no necesita
 todavía.
 
-**Precisión sobre atomicidad:** lo atómico (transacción Drizzle) es la escritura
-en `orders` + `order_events`. El envío del push es best-effort *fuera* de esa
-transacción — no puede ser atómico con un servicio externo. Si el push falla, el
-registro en 1.1 (in-app) igual queda, por el doble canal que pide el spec — ese
-es el mecanismo de tolerancia a fallos, no una transacción distribuida.
+**Precisión sobre atomicidad (implementado en T4):** cada acción de
+`applyOrderEvent()` (tomar/completar/devolver/cancelar/entregar/cobrar) hace
+SELECT (lee la orden) → valida permiso+estado en JS → UPDATE condicional con
+`RETURNING`, re-asertando en el WHERE exactamente el estado leído (mismo
+mecanismo que la concurrencia del pool, abajo) → si el UPDATE afectó una fila,
+INSERT a `order_events`. El UPDATE en sí es atómico (Postgres garantiza
+chequeo+escritura de una fila). El INSERT del evento es un **segundo
+statement**, no envuelto en la misma transacción que el UPDATE — neon-http no
+soporta transacciones interactivas con lecturas intermedias (ver abajo), y
+unir ambos en una sola sentencia (`WITH ... UPDATE ... RETURNING`, `INSERT ...
+SELECT FROM` esa CTE) agregaba fragilidad real para un beneficio marginal a
+este volumen (~5-10 usuarios): en el peor caso de una falla de red exactamente
+entre las dos escrituras, se pierde una línea de historial — nunca se
+corrompe el estado de la orden ni se duplica una transición. El envío de push
+es, además, best-effort *fuera* de ambas escrituras — no puede ser atómico con
+un servicio externo; si falla, el registro en 1.1 (in-app) igual queda, por
+el doble canal que pide el spec.
 
-**Concurrencia en el pool:** tomar un trabajo del pool es un UPDATE condicional,
-no un read-then-write: `UPDATE orders SET responsable_actual = $usuario WHERE id
-= $id AND responsable_actual IS NULL AND area_actual = $area`. Si `rowCount = 0`,
-alguien más lo tomó primero — la app responde "Ya fue tomado por otra persona" y
-refresca. Esto evita la condición de carrera de dos personas tomando la misma
-orden a la vez. Este UPDATE condicional es la **primera sentencia** dentro de la
-transacción/batch de `applyOrderEvent()` para la acción "tomar" — no un paso
-aparte antes de ella; eso es lo que hace literal la afirmación de "único punto
-de transición".
+**Concurrencia (pool y todas las demás transiciones):** cada UPDATE es
+condicional, no un read-then-write ciego: `UPDATE orders SET ... WHERE id =
+$id AND <mismo estado que se leyó>` (p. ej. `responsable_actual IS NULL AND
+area_actual = $area` para tomar). Si `rowCount = 0`, alguien más cambió la
+orden entre la lectura y la escritura — la app responde "La orden cambió
+mientras tanto, refrescá e intentá de nuevo" sin escribir el evento de
+historial. Esto evita la condición de carrera de dos personas tomando (o
+completando, devolviendo, etc.) la misma orden a la vez.
 
 Neon en modo `neon-http` no soporta transacciones interactivas con lecturas
-intermedias, solo *batches* de sentencias sin dependencia entre sí. El UPDATE
-condicional de arriba es compatible (no depende de una lectura previa). El
-resto de `applyOrderEvent()` (completar parte, cancelar, marcar entregado/cobro)
-sí escribe `valor_anterior` en `order_events`, lo cual requiere leer el valor
-actual antes de escribir — **confirmar antes de implementar** si esto se resuelve
-con un `RETURNING` en el mismo UPDATE (evita la lectura previa) o si hace falta
-el driver con Pool/WebSocket de Neon para esos casos. Revisar cómo lo resolvió
-`lavanderia-app-generica`, que ya enfrentó el mismo problema con el mismo driver.
+intermedias, solo *batches* de sentencias sin dependencia entre sí — por eso
+el patrón de arriba (SELECT propio, luego UPDATE...RETURNING condicional,
+luego INSERT condicionado al resultado) en vez de una única transacción
+interactiva. Confirmado compatible con el mismo driver que usa
+`lavanderia-app-generica`.
 
 ## Architecture
 
