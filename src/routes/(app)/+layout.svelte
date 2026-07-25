@@ -1,8 +1,17 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import TabBar from '$lib/components/TabBar.svelte';
 
-	// T7 agrega acá el nav inferior (Inicio · Nueva orden · Todas las órdenes).
 	let { children }: { children: Snippet } = $props();
 </script>
 
-{@render children()}
+<div class="app-content">
+	{@render children()}
+</div>
+<TabBar />
+
+<style>
+	.app-content {
+		padding-bottom: 64px;
+	}
+</style>
