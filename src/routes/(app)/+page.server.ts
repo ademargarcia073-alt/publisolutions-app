@@ -1,5 +1,5 @@
 import { alias } from 'drizzle-orm/pg-core';
-import { and, eq, notInArray } from 'drizzle-orm';
+import { eq, notInArray } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { orders } from '$lib/server/db/orders.schema';
@@ -28,17 +28,14 @@ export const load: PageServerLoad = async () => {
 		.where(notInArray(orders.estado, ['entregado', 'cancelada']))
 		.orderBy(orders.fechaEntregaComprometida);
 
+	// "Producción" es implícito para todo usuario aprobado (spec sección 2),
+	// sin importar si además es vendedor y/o admin — los flags son aditivos,
+	// no excluyentes (ver isProduccion() en $lib/server/orders/permissions.ts).
 	const produccion = await db
 		.select({ userId: userPermissions.userId, nombre: user.name })
 		.from(userPermissions)
 		.innerJoin(user, eq(userPermissions.userId, user.id))
-		.where(
-			and(
-				eq(userPermissions.aprobado, true),
-				eq(userPermissions.esVendedor, false),
-				eq(userPermissions.esAdmin, false)
-			)
-		);
+		.where(eq(userPermissions.aprobado, true));
 
 	const ocupados = new Set(tablero.map((o) => o.responsableActualId).filter((id) => id !== null));
 	const produccionLibre = produccion.filter((p) => !ocupados.has(p.userId));

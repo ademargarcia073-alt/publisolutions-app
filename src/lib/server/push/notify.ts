@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { orders } from '$lib/server/db/orders.schema';
 import { userPermissions } from '$lib/server/db/permissions.schema';
@@ -11,18 +11,14 @@ type EventFields = { campoOArea: string; valorAnterior: string | null; valorNuev
 // Doble canal, mismo evento dispara ambos (spec sección 5): push nativo +
 // registro en 1.1. Broadcast a todo el grupo de producción (sin filtrar por
 // área) + el vendedor dueño de la orden — literal del spec, sin excluir a
-// quien acaba de hacer la acción.
+// quien acaba de hacer la acción. "Producción" es implícito para todo
+// aprobado (spec sección 2) — un vendedor o admin que también hace piso
+// recibe el broadcast igual, no solo su propia notificación de vendedor.
 async function getRecipients(vendedorId: string): Promise<string[]> {
 	const produccion = await db
 		.select({ userId: userPermissions.userId })
 		.from(userPermissions)
-		.where(
-			and(
-				eq(userPermissions.aprobado, true),
-				eq(userPermissions.esVendedor, false),
-				eq(userPermissions.esAdmin, false)
-			)
-		);
+		.where(eq(userPermissions.aprobado, true));
 
 	const ids = new Set(produccion.map((row) => row.userId));
 	ids.add(vendedorId);

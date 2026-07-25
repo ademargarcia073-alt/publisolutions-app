@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Permisos } from '$lib/server/permissions';
 import {
+	isProduccion,
 	puedeCrearOrden,
 	puedeEditarDatosGenerales,
 	puedeTomar,
@@ -11,6 +12,7 @@ const ADMIN: Permisos = { esVendedor: false, esAdmin: true, aprobado: true };
 const ADMIN_Y_VENDEDOR: Permisos = { esVendedor: true, esAdmin: true, aprobado: true };
 const VENDEDOR: Permisos = { esVendedor: true, esAdmin: false, aprobado: true };
 const PRODUCCION: Permisos = { esVendedor: false, esAdmin: false, aprobado: true };
+const NO_APROBADO: Permisos = { esVendedor: false, esAdmin: false, aprobado: false };
 
 function baseOrder(overrides: Record<string, unknown> = {}) {
 	return {
@@ -24,6 +26,16 @@ function baseOrder(overrides: Record<string, unknown> = {}) {
 		...overrides
 	} as never;
 }
+
+describe('isProduccion — implícito para todo aprobado (spec sección 2), sin importar otros flags', () => {
+	it('es true para producción pura', () => expect(isProduccion(PRODUCCION)).toBe(true));
+	it('es true para un vendedor (además es producción)', () => expect(isProduccion(VENDEDOR)).toBe(true));
+	it('es true para un admin (además es producción)', () => expect(isProduccion(ADMIN)).toBe(true));
+	it('es true para un admin que también es vendedor', () =>
+		expect(isProduccion(ADMIN_Y_VENDEDOR)).toBe(true));
+	it('es false si no está aprobado, sin importar los demás flags', () =>
+		expect(isProduccion(NO_APROBADO)).toBe(false));
+});
 
 describe('puedeCrearOrden — admin NO tiene bypass (spec: "Sí, si también es vendedor")', () => {
 	it('permite a un vendedor puro', () => expect(puedeCrearOrden(VENDEDOR)).toBe(true));
@@ -65,6 +77,16 @@ describe('puedeTomar / puedeDevolver — consistencia con apply-order-event', ()
 		expect(puedeTomar(order, PRODUCCION)).toBe(false);
 	});
 
+	it('puedeTomar es verdadero para un vendedor cuando el área está libre (producción es implícita)', () => {
+		const order = baseOrder({ responsableActual: null });
+		expect(puedeTomar(order, VENDEDOR)).toBe(true);
+	});
+
+	it('puedeTomar es verdadero para un admin cuando el área está libre', () => {
+		const order = baseOrder({ responsableActual: null });
+		expect(puedeTomar(order, ADMIN)).toBe(true);
+	});
+
 	it('puedeDevolver es falso en la primera área de la secuencia', () => {
 		const order = baseOrder({ areaActual: 'diseño', responsableActual: 'prod-1' });
 		expect(puedeDevolver(order, 'prod-1', PRODUCCION)).toBe(false);
@@ -73,5 +95,10 @@ describe('puedeTomar / puedeDevolver — consistencia con apply-order-event', ()
 	it('puedeDevolver es verdadero desde la segunda área en adelante para el responsable', () => {
 		const order = baseOrder({ areaActual: 'impresion', responsableActual: 'prod-1' });
 		expect(puedeDevolver(order, 'prod-1', PRODUCCION)).toBe(true);
+	});
+
+	it('puedeDevolver es verdadero para un vendedor que tomó y es el responsable', () => {
+		const order = baseOrder({ areaActual: 'impresion', responsableActual: 'vendedor-1' });
+		expect(puedeDevolver(order, 'vendedor-1', VENDEDOR)).toBe(true);
 	});
 });

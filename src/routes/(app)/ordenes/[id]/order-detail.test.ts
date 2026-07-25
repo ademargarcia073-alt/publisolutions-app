@@ -96,7 +96,7 @@ describe('/ordenes/[id] — load computa los flags de permiso', () => {
 			flags: Record<string, boolean>;
 		};
 		expect(result.flags.puedeEditar).toBe(true);
-		expect(result.flags.puedeTomar).toBe(false); // vendedor no puede tomar
+		expect(result.flags.puedeTomar).toBe(true); // producción es implícita — un vendedor también puede tomar
 	});
 
 	it('puedeTomar=true para producción cuando el área está libre', async () => {

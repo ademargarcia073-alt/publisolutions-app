@@ -173,12 +173,13 @@ interactiva. Confirmado compatible con el mismo driver que usa
 ## Data Model (resumen — detalle completo en el spec original)
 
 - `users` — Better-Auth + columnas `es_vendedor` (bool), `es_admin` (bool),
-  `aprobado` (bool). **Producción** no es un flag propio — es la condición
-  derivada `aprobado = true AND es_vendedor = false AND es_admin = false` (todo
-  usuario aprobado que no es vendedor ni admin es, por definición, producción).
-  Nota: un admin que también es vendedor tiene ambos flags en `true` — los
-  permisos se evalúan con OR sobre los flags, nunca con un `role` único
-  (permisos aditivos, no roles excluyentes, spec sección 2).
+  `aprobado` (bool). **Producción** no es un flag propio — es implícito para
+  TODO usuario `aprobado = true`, sin importar `es_vendedor`/`es_admin` (spec
+  sección 2, literal: "Producción: implícito para todos los usuarios
+  aprobados, sin flag propio"). Un vendedor o un admin pueden ADEMÁS ser parte
+  de producción al mismo tiempo — los permisos se evalúan con OR sobre los
+  flags, nunca con un `role` único ni con una exclusión mutua (permisos
+  aditivos, no roles excluyentes, spec sección 2).
 - `orders` — datos generales, financiero (`total`, `a_cuenta`, `saldo` calculado,
   `estado_cobro`, `fecha_cobro`), `areas_seleccionadas` (array ordenado — **es un
   subconjunto de la secuencia fija global** Diseño→Impresión→Corte→Metalmecánica→

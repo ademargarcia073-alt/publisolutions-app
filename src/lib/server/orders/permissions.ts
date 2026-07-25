@@ -3,13 +3,17 @@ import type { orders } from '$lib/server/db/orders.schema';
 
 export type OrderRow = typeof orders.$inferSelect;
 
-// "Producción" no es un flag propio — todo usuario aprobado que no es
-// vendedor ni admin es, por definición, producción (spec sección 2,
-// docs/design-orden-trabajo.md). Única fuente de verdad — reusada tanto por
-// applyOrderEvent() (T4) como por el load de 2.0 (T9) para decidir qué
-// botones mostrar, así ambos lugares nunca pueden divergir.
+// "Producción" no es un flag propio — es implícito para TODO usuario
+// aprobado, sin importar qué otros flags tenga (spec sección 2: "Producción:
+// implícito para todos los usuarios aprobados, sin flag propio" + la fila
+// "Tomar/completar" da Sí en la columna Producción para cualquier aprobado).
+// Un vendedor o un admin pueden ADEMÁS ser parte de producción al mismo
+// tiempo — los flags son aditivos, nunca excluyentes entre sí. Única fuente
+// de verdad — reusada tanto por applyOrderEvent() (T4) como por el load de
+// 2.0 (T9) para decidir qué botones mostrar, así ambos lugares nunca pueden
+// divergir.
 export function isProduccion(permisos: Permisos): boolean {
-	return permisos.aprobado && !permisos.esVendedor && !permisos.esAdmin;
+	return permisos.aprobado;
 }
 
 export function puedeCrearOrden(permisos: Permisos): boolean {
@@ -33,7 +37,7 @@ export function puedeEditarDatosGenerales(
 
 export function puedeTomar(order: OrderRow, permisos: Permisos): boolean {
 	return (
-		(permisos.esAdmin || isProduccion(permisos)) &&
+		isProduccion(permisos) &&
 		order.estado === 'en_producción' &&
 		order.areaActual !== null &&
 		order.responsableActual === null

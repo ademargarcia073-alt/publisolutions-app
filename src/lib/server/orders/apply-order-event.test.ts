@@ -50,11 +50,16 @@ beforeEach(() => {
 });
 
 describe('tomar', () => {
-	it('rechaza a un vendedor puro (no es producción ni admin)', async () => {
+	it('permite a un vendedor puro tomar un pool libre (producción es implícita para todo aprobado)', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder({ responsableActual: null })]);
+		updateReturningMock.mockResolvedValueOnce([{ id: 1 }]);
+
 		const result = await tomar(1, 'v-1', VENDEDOR);
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('No se puede tomar') });
-		expect(insertValuesMock).not.toHaveBeenCalled();
+
+		expect(result).toEqual({ ok: true });
+		expect(insertValuesMock).toHaveBeenCalledWith(
+			expect.objectContaining({ campoOArea: 'responsable_actual', valorNuevo: 'v-1' })
+		);
 	});
 
 	it('permite a producción tomar un pool libre', async () => {
