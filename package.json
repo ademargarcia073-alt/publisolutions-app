@@ -26,7 +26,6 @@
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^22",
-		"@types/web-push": "^3.6.4",
 		"better-auth": "~1.4.21",
 		"drizzle-kit": "^0.31.10",
 		"drizzle-orm": "^0.45.2",
@@ -38,8 +37,8 @@
 		"wrangler": "^4.97.0"
 	},
 	"dependencies": {
-		"zod": "^4.4.3",
-		"web-push": "^3.6.7",
-		"resend": "^6.17.2"
+		"@block65/webcrypto-web-push": "^1.0.2",
+		"resend": "^6.17.2",
+		"zod": "^4.4.3"
 	}
 }
