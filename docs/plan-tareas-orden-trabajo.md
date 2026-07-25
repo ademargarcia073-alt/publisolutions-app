@@ -103,6 +103,11 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `wrangler.toml`, configuración del proyecto en Cloudflare dashboard
   - Verify: push a `main` dispara build y deploy automático; smoke test post-deploy (login + ver dashboard)
 
+- [ ] **T12 (P2, human: ~15min / CC: ~5min)** — pendiente de info del cliente — Reemplazar el placeholder `TIPOS_TRABAJO` (`letrero`, `gigantografia`, `vinilo`, `otro` — T2) por la lista real de tipos de trabajo del cliente
+  - Surfaced by: usuario, tras revisar la demo — el placeholder de T2 quedó marcado con un TODO pero sin tarea propia en el plan
+  - Files: `src/lib/server/db/orders.schema.ts` (array `TIPOS_TRABAJO`) y donde T7-T10 rendericen el dropdown de tipo de trabajo en el formulario 2.0 (mismo array, no hay un tercer lugar — es texto+set-permitido a nivel de app, no un pg enum, así que no hace falta migración)
+  - Verify: el dropdown de 2.0 muestra la lista real; `orderFormSchema` (T5) sigue validando contra el mismo array actualizado sin cambios de código, solo de datos
+
 _No new tasks from Test Review beyond framework setup — la cobertura se escribe junto a cada tarea (T1-T10), no como fase separada._
 
 ## Completion Summary
@@ -119,7 +124,7 @@ _No new tasks from Test Review beyond framework setup — la cobertura se escrib
 - Outside voice: omitido (codex no configurado en este entorno; no crítico para un plan ya validado con 2 rondas de revisión adversarial en la fase de design doc)
 - Parallelization: 4 lanes (A bloqueante, B‖C‖D en paralelo, E después)
 - Post-revisión: usuario resolvió las 2 preguntas abiertas del design doc (dimensión estructurada, flujo de devolución a área anterior) — issues 6 y 7 arriba, incorporadas a T4/T5/T9
-- 11 tareas de implementación (9 P1, 2 P2)
+- 12 tareas de implementación (9 P1, 3 P2) — T12 agregada post-revisión, pendiente de que el cliente confirme la lista real de tipos de trabajo
 
 ## VERDICT
 
