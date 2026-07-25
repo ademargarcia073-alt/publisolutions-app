@@ -272,3 +272,9 @@ Provisionar las cuentas de Neon y Cloudflare Pages (o confirmar que ya existen
 para `lavanderia-app-generica` y se puede sumar este proyecto) antes de la
 próxima sesión, para que `/plan-eng-review` pueda planificar el setup inicial sin
 bloquearse en credenciales.
+
+## Engineering Review
+
+`/plan-eng-review` corrió sobre este doc: 5 issues encontrados (arquitectura ×2,
+code quality ×1, performance ×1, framework de tests), los 5 resueltos con el
+usuario. Plan de tareas resultante: [`plan-tareas-orden-trabajo.md`](./plan-tareas-orden-trabajo.md).
