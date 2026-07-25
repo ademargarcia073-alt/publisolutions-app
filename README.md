@@ -97,6 +97,19 @@ arriba:
 No hay ningún otro camino de auto-promoción a admin en el código — este
 script corre fuera del runtime de la app, a mano, una vez por deploy.
 
+**Tocar flags de un usuario ya aprobado:** a diferencia del primer admin,
+para el resto lo normal es usar `/aprobar-registros` (1.2) o, una vez
+implementada, la pantalla de administración de usuarios (ver plan de tareas,
+T13). Para casos puntuales de CLI (p. ej. testing) sin pasar por SQL a mano:
+
+```bash
+bun run permisos:set admin@cliente.com --vendedor
+```
+
+Solo actualiza los flags pasados como argumento (`--vendedor`/`--no-vendedor`,
+`--admin`/`--no-admin`); el resto queda igual. Falla si el usuario no existe o
+todavía no fue aprobado. Ver `scripts/permisos-set.ts`.
+
 ### 4. Smoke test post-deploy
 
 1. Abrir la URL pública → `/registro` → crear la cuenta admin → confirmar que

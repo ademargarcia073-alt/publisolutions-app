@@ -108,6 +108,11 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/lib/server/db/orders.schema.ts` (array `TIPOS_TRABAJO`) y donde T7-T10 rendericen el dropdown de tipo de trabajo en el formulario 2.0 (mismo array, no hay un tercer lugar — es texto+set-permitido a nivel de app, no un pg enum, así que no hace falta migración)
   - Verify: el dropdown de 2.0 muestra la lista real; `orderFormSchema` (T5) sigue validando contra el mismo array actualizado sin cambios de código, solo de datos
 
+- [ ] **T13 (P2, human: ~2h / CC: ~20min)** — screens — Administración de usuarios: pantalla para admin con la lista de usuarios ya aprobados y toggle de `es_vendedor`/`es_admin` desde la interfaz — equivalente a 1.2 (Aprobar registros) pero para aprobados en vez de pendientes
+  - Surfaced by: usuario, tras encontrar que `/aprobar-registros` solo lista pendientes (`WHERE aprobado = false`) — una vez aprobado, no hay ninguna pantalla para editar los flags de un usuario; el único camino era SQL directo en Neon o el script `permisos:set` (CLI, ver `scripts/permisos-set.ts`)
+  - Files: nueva ruta `src/routes/(app)/administrar-usuarios/+page.svelte`, `+page.server.ts` (guard `requireAdmin`, mismo patrón que `/aprobar-registros`)
+  - Verify: test que la query lista solo `aprobado = true`; la action de toggle actualiza `es_vendedor`/`es_admin` y devuelve 403 si la ejecuta un no-admin (mismo patrón de `requireAdmin` repetido en cada action, no solo en el load)
+
 _No new tasks from Test Review beyond framework setup — la cobertura se escribe junto a cada tarea (T1-T10), no como fase separada._
 
 ## Completion Summary
@@ -124,7 +129,7 @@ _No new tasks from Test Review beyond framework setup — la cobertura se escrib
 - Outside voice: omitido (codex no configurado en este entorno; no crítico para un plan ya validado con 2 rondas de revisión adversarial en la fase de design doc)
 - Parallelization: 4 lanes (A bloqueante, B‖C‖D en paralelo, E después)
 - Post-revisión: usuario resolvió las 2 preguntas abiertas del design doc (dimensión estructurada, flujo de devolución a área anterior) — issues 6 y 7 arriba, incorporadas a T4/T5/T9
-- 12 tareas de implementación (9 P1, 3 P2) — T1-T10 completas y verificadas (build + typecheck + 91 tests vitest, todos pasando). T11 (deploy) y T12 (lista real de tipo_trabajo, pendiente del cliente) quedan abiertas.
+- 13 tareas de implementación (9 P1, 4 P2) — T1-T10 completas y verificadas (build + typecheck + 91 tests vitest, todos pasando). T11 (deploy) completa. T12 (lista real de tipo_trabajo, pendiente del cliente) y T13 (administración de usuarios ya aprobados, surgida post-demo) quedan abiertas.
 
 ## VERDICT
 
