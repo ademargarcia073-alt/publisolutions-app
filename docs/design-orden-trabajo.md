@@ -177,7 +177,9 @@ el driver con Pool/WebSocket de Neon para esos casos. Revisar cómo lo resolvió
   Armado, nunca un orden distinto por orden de trabajo), campos derivados
   (`area_actual`, `estado`, `responsable_actual`).
 - `order_events` — historial append-only: `{usuario, campo_o_area, valor_anterior,
-  valor_nuevo, timestamp}`. Única fuente de verdad para 2.0 (historial de cambios).
+  valor_nuevo, timestamp, nota?}`. `nota` es opcional en general, **obligatoria**
+  para el evento de devolución a área anterior. Única fuente de verdad para 2.0
+  (historial de cambios).
 - `push_subscriptions` — suscripciones Web Push por usuario (Neon).
 
 ## State Machine
@@ -190,8 +192,17 @@ creada ──(1ra área entra a pool)──► en_producción
                        │  responsable_actual = usuario)       │
                        │           │                          │
                        │      completa su parte               │
-                       │           │                          │
-                       │   ¿hay siguiente área?                │
+                       │           │           │               │
+                       │           │      devuelve a área      │
+                       │           │      anterior (defecto)   │
+                       │           │           │               │
+                       │           │           ▼               │
+                       │           │   pool del área anterior  │
+                       │           │   (responsable_actual =   │
+                       │           │    null, requiere nota)   │
+                       │           │           │               │
+                       │           ▼           │               │
+                       │   ¿hay siguiente área? ◄──────────────┘
                        │     sí → siguiente pool (repite)      │
                        │     no → listo_para_entrega           │
                        └──────────────────┬──────────────────┘
@@ -206,7 +217,38 @@ creada ──(1ra área entra a pool)──► en_producción
 
 Cancelación: posible desde "creada" o "en_producción" únicamente
 (vendedor creador o cualquier admin).
+
+Devolución a área anterior: posible solo desde "en_producción", solo hacia la
+ÚNICA área inmediatamente anterior en `areas_seleccionadas` (no salta ni elige
+área arbitraria). No disponible si el área actual es la primera de la secuencia
+del pedido (no hay área anterior a la cual devolver — en ese caso la única
+opción es cancelar). Quien la ejecuta: el responsable actual (quien detectó el
+defecto) o cualquier admin — es una decisión de piso de producción, no de venta.
+`estado` no cambia (sigue "en_producción"); solo retrocede `area_actual` y
+limpia `responsable_actual`. No es una transición de estado nueva — es
+simétrica a "completar", pero moviendo el índice hacia atrás en vez de adelante.
 ```
+
+### Devolución a área anterior — extensión post-revisión (fuera del spec original)
+
+El spec original no contemplaba este flujo (ver `spec-original.md`); se agrega
+por decisión explícita del usuario tras la revisión de ingeniería. Diseño:
+
+- **Trigger:** el responsable actual del área (o un admin) marca "Devolver a
+  [área anterior]" desde 2.0, con una **nota obligatoria** describiendo el
+  defecto encontrado.
+- **Efecto:** `area_actual` retrocede una posición en `areas_seleccionadas`;
+  `responsable_actual` se limpia (vuelve a pool de esa área anterior);
+  `estado` permanece "en_producción".
+- **Historial:** `order_events` gana un campo opcional `nota` (texto libre),
+  útil también para otros eventos, no solo devoluciones. El evento de
+  devolución registra `campo_o_area = area_actual`, `valor_anterior` = área de
+  donde se devuelve, `valor_nuevo` = área anterior, y la `nota` con el motivo.
+- **Notificación:** mismo doble canal que cualquier cambio de área/estado
+  (push + registro en 1.1), broadcast a producción + vendedor dueño — sin
+  necesidad de lógica nueva de targeting.
+- **Restricción:** no disponible si `area_actual` es la primera área
+  seleccionada de la orden (no hay a dónde devolver).
 
 ## Open Questions
 
@@ -215,15 +257,12 @@ Cancelación: posible desde "creada" o "en_producción" únicamente
   usuario con `aprobado = false` que intenta login ve una pantalla "Tu registro
   está pendiente de aprobación" y no llega a 1.0. No hay estado intermedio de
   acceso restringido.
-- Formato exacto de `dimension` (texto libre vs. estructura ancho×alto) — spec no
-  lo especifica; se trata como texto libre en el MVP.
-- **Sin resolver — para el cliente, no para /plan-eng-review:** el spec no
-  contempla que producción rechace o devuelva una orden a un área anterior (p.
-  ej. Corte encuentra un defecto de Impresión). El MVP no tiene esa transición;
-  si ocurre en la práctica, hoy se resolvería fuera del sistema (conversación
-  directa) y quien tomó el trabajo simplemente no lo completa hasta que se
-  corrija manualmente. Confirmar con el cliente si esto es aceptable para el
-  MVP o si hace falta una transición explícita de "devolver a área anterior".
+- **Resuelto:** `dimension` es una estructura de 3 campos, no texto libre:
+  `{ alto: number, ancho: number, unidad: enum }`. Unidad por defecto: `cm | m |
+  pulgadas` (a confirmar con el cliente si falta alguna; es la unidad más común
+  en señalética/impresión — fácil de extender el enum si hace falta otra).
+- **Resuelto:** sí hace falta la transición "devolver a área anterior" — ver
+  sección "Devolución a área anterior" arriba, bajo State Machine.
 
 ## Success Criteria
 

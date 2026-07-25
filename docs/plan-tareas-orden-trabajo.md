@@ -13,6 +13,8 @@ Repo: ademargarcia073-alt/publisolutions-app
 | 3 | Validación de campos del formulario | Zod schema compartido cliente/servidor |
 | 4 | Framework de tests | Vitest (unit) + Playwright (E2E) |
 | 5 | N+1 en queries del dashboard | Select con join explícito desde el día 1 |
+| 6 | Formato de `dimension` | Estructura `{alto, ancho, unidad}`, no texto libre |
+| 7 | Devolución a área anterior | Agregada al MVP (no estaba en el spec original) — ver design doc |
 
 ## Failure modes — verificación
 
@@ -61,15 +63,15 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/lib/server/auth.ts`, `src/hooks.server.ts`, `src/routes/(auth)/login`, `/registro`, `/recuperar`
   - Verify: test E2E — sesión válida pero `aprobado=false` no llega a ninguna ruta protegida
 
-- [ ] **T4 (P1, human: ~4h / CC: ~30min)** — core — `applyOrderEvent()`: tomar (UPDATE condicional `WHERE responsable_actual IS NULL`), completar, cancelar (rechazado si estado >= listo_para_entrega), marcar entregado, marcar cobrado — todas con validación de permiso por flags aditivos
-  - Surfaced by: Recommended Approach del design doc + Architecture review (concurrencia del pool)
+- [ ] **T4 (P1, human: ~5h / CC: ~40min)** — core — `applyOrderEvent()`: tomar (UPDATE condicional `WHERE responsable_actual IS NULL`), completar, **devolver a área anterior** (retrocede `area_actual`, limpia `responsable_actual`, `nota` obligatoria, rechazado si es la primera área de la secuencia), cancelar (rechazado si estado >= listo_para_entrega), marcar entregado, marcar cobrado — todas con validación de permiso por flags aditivos
+  - Surfaced by: Recommended Approach del design doc + Architecture review (concurrencia del pool) + decisión de agregar devolución post-revisión
   - Files: `src/lib/server/orders/apply-order-event.ts`, `src/lib/server/orders/permissions.ts`
-  - Verify: tests unitarios Vitest para cada rama (tomar éxito/ya-tomado, completar con/sin siguiente área, cancelar permitido/rechazado, cada combinación rol×acción)
+  - Verify: tests unitarios Vitest para cada rama (tomar éxito/ya-tomado, completar con/sin siguiente área, devolver permitido/rechazado-en-primera-área/sin-nota-rechazado, cancelar permitido/rechazado, cada combinación rol×acción)
 
-- [ ] **T5 (P1, human: ~2h / CC: ~15min)** — validación — Zod schemas para formulario de orden (cantidad>0, fechas, montos no negativos, cliente no vacío), compartidos cliente/servidor
-  - Surfaced by: Code Quality Issue 3
+- [ ] **T5 (P1, human: ~2h30 / CC: ~20min)** — validación — Zod schemas para formulario de orden: cantidad>0, fechas, montos no negativos, cliente no vacío, `dimension` como `{alto: positive, ancho: positive, unidad: enum('cm','m','pulgadas')}`, `nota` requerida cuando la acción es "devolver"
+  - Surfaced by: Code Quality Issue 3 + decisiones de dimensión estructurada y devolución
   - Files: `src/lib/schemas/order.ts`
-  - Verify: test unitario por regla de validación (cantidad<=0 rechazado, fecha pasada rechazada, montos negativos rechazados)
+  - Verify: test unitario por regla (cantidad<=0 rechazado, fecha pasada rechazada, montos negativos rechazados, dimension con alto/ancho<=0 rechazada, unidad fuera del enum rechazada, devolver sin nota rechazado)
 
 - [ ] **T6 (P2, human: ~4h / CC: ~30min)** — push — VAPID setup, service worker, registro de suscripción, envío de push en cada cambio de área/estado, limpieza de suscripción en 404/410 (Issue 2)
   - Surfaced by: Notificaciones del spec + Architecture Issue 2
@@ -86,10 +88,10 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/routes/(app)/+page.svelte`, `+page.server.ts`, `src/routes/(app)/notificaciones`
   - Verify: test de performance/query — una sola consulta para tablero, no N+1 (verificar en logs de Neon o EXPLAIN)
 
-- [ ] **T9 (P1, human: ~5h / CC: ~40min)** — screens — 2.0 Formulario/detalle de orden (crear, editar mientras nadie tomó, historial de cambios cuando se abre desde 3.0)
-  - Surfaced by: Spec sección 1
+- [ ] **T9 (P1, human: ~6h / CC: ~50min)** — screens — 2.0 Formulario/detalle de orden (crear con `dimension` como 3 campos alto/ancho/unidad, editar mientras nadie tomó, historial de cambios cuando se abre desde 3.0, botón "Devolver a [área anterior]" con nota obligatoria visible solo al responsable actual/admin y solo si no es la primera área)
+  - Surfaced by: Spec sección 1 + decisiones de dimensión estructurada y devolución
   - Files: `src/routes/(app)/ordenes/nueva`, `/ordenes/[id]`
-  - Verify: E2E — ciclo de vida completo crear→tomar→completar (todas las áreas)→listo→entregado→cobrado, más cancelación desde creada/en_producción
+  - Verify: E2E — ciclo de vida completo crear→tomar→completar (todas las áreas)→listo→entregado→cobrado; cancelación desde creada/en_producción; devolver desde área intermedia (vuelve a pool anterior) y verificar que el botón no aparece en la primera área de la secuencia
 
 - [ ] **T10 (P1, human: ~3h / CC: ~20min)** — screens — 3.0 Listado de órdenes (query preparada para filtros estado/área/cliente aunque la UI de filtros se simplifique en v1)
   - Surfaced by: Spec sección 1 + sección 6 (filtros diferidos en UI, no en query)
@@ -113,14 +115,16 @@ _No new tasks from Test Review beyond framework setup — la cobertura se escrib
 - NOT in scope: ya escrito en el design doc (autocompletado clientes, filtros UI avanzados, áreas configurables)
 - What already exists: ya escrito en el design doc (patrón de `lavanderia-app-generica`)
 - TODOS.md: no se creó — los 3 items diferidos ya están documentados con razón en el design doc (sección NOT in scope); no hay descubrimientos nuevos de esta revisión que ameriten TODOS.md aparte
-- Failure modes: 0 gaps críticos (los 5 issues resueltos cubren cada codepath de riesgo identificado)
+- Failure modes: 0 gaps críticos (los 7 issues resueltos cubren cada codepath de riesgo identificado)
 - Outside voice: omitido (codex no configurado en este entorno; no crítico para un plan ya validado con 2 rondas de revisión adversarial en la fase de design doc)
 - Parallelization: 4 lanes (A bloqueante, B‖C‖D en paralelo, E después)
+- Post-revisión: usuario resolvió las 2 preguntas abiertas del design doc (dimensión estructurada, flujo de devolución a área anterior) — issues 6 y 7 arriba, incorporadas a T4/T5/T9
 - 11 tareas de implementación (9 P1, 2 P2)
 
 ## VERDICT
 
 **LISTO PARA IMPLEMENTAR.** Design doc aprobado + revisión de ingeniería completa,
-5/5 issues resueltos. Sin decisiones pendientes.
+7/7 issues resueltos (5 de la revisión + 2 preguntas abiertas resueltas por el
+usuario). Sin decisiones pendientes.
 
 NO UNRESOLVED DECISIONS
