@@ -6,3 +6,14 @@
 /.pw-browsers-local/
 /.claude/skills/
 /.gstack/
+
+# SvelteKit app
+node_modules/
+.svelte-kit/
+.wrangler/
+/build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
