@@ -10,7 +10,12 @@
 <div class="screen">
 	<div class="header">
 		<h1>Hola, {data.user.name.split(' ')[0]}</h1>
-		<a class="bell" href="/notificaciones" aria-label="Notificaciones">🔔</a>
+		<div class="header-actions">
+			{#if data.permisos.esAdmin}
+				<a class="icon-link" href="/aprobar-registros" aria-label="Aprobar registros">👤</a>
+			{/if}
+			<a class="icon-link" href="/notificaciones" aria-label="Notificaciones">🔔</a>
+		</div>
 	</div>
 
 	<ActivarNotificaciones vapidPublicKey={data.vapidPublicKey} />
@@ -81,7 +86,13 @@
 		margin: 0;
 	}
 
-	.bell {
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+
+	.icon-link {
 		font-size: 20px;
 		text-decoration: none;
 	}
