@@ -75,4 +75,40 @@ describe('Dashboard (1.0) — Performance Issue 5: sin N+1', () => {
 
 		expect(result.produccionLibre).toEqual([{ userId: 'prod-2', nombre: 'Prod Dos' }]);
 	});
+
+	it('con cero órdenes activas, produccionLibre incluye a todo el equipo de producción', async () => {
+		selectMock
+			.mockImplementationOnce(() => makeChainable([]))
+			.mockImplementationOnce(() =>
+				makeChainable([
+					{ userId: 'prod-1', nombre: 'Prod Uno' },
+					{ userId: 'prod-2', nombre: 'Prod Dos' }
+				])
+			);
+
+		const result = (await load({} as never)) as {
+			produccionLibre: unknown[];
+			produccionTotal: number;
+		};
+
+		expect(result.produccionLibre).toEqual([
+			{ userId: 'prod-1', nombre: 'Prod Uno' },
+			{ userId: 'prod-2', nombre: 'Prod Dos' }
+		]);
+		expect(result.produccionTotal).toBe(2);
+	});
+
+	it('produccionTotal distingue "sin personal de producción" de "todos ocupados"', async () => {
+		selectMock
+			.mockImplementationOnce(() => makeChainable([]))
+			.mockImplementationOnce(() => makeChainable([]));
+
+		const result = (await load({} as never)) as {
+			produccionLibre: unknown[];
+			produccionTotal: number;
+		};
+
+		expect(result.produccionTotal).toBe(0);
+		expect(result.produccionLibre).toEqual([]);
+	});
 });

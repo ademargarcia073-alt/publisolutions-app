@@ -39,7 +39,9 @@
 
 	<Card wide>
 		<h2>Producción libre</h2>
-		{#if data.produccionLibre.length === 0}
+		{#if data.produccionTotal === 0}
+			<p class="empty">No hay personal de producción registrado.</p>
+		{:else if data.produccionLibre.length === 0}
 			<p class="empty">Todos están con una orden asignada.</p>
 		{:else}
 			<ul class="lista-libre">

@@ -43,5 +43,5 @@ export const load: PageServerLoad = async () => {
 	const ocupados = new Set(tablero.map((o) => o.responsableActualId).filter((id) => id !== null));
 	const produccionLibre = produccion.filter((p) => !ocupados.has(p.userId));
 
-	return { tablero, produccionLibre };
+	return { tablero, produccionLibre, produccionTotal: produccion.length };
 };
