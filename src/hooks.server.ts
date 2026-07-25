@@ -1,0 +1,20 @@
+import type { Handle } from '@sveltejs/kit';
+import { building } from '$app/environment';
+import { auth } from '$lib/server/auth';
+import { svelteKitHandler } from 'better-auth/svelte-kit';
+
+// T3 adds the global aprobado/session guard here (Architecture Issue 1 —
+// docs/plan-tareas-orden-trabajo.md). This hook currently only wires
+// Better-Auth's session into event.locals.
+const handleBetterAuth: Handle = async ({ event, resolve }) => {
+	const session = await auth.api.getSession({ headers: event.request.headers });
+
+	if (session) {
+		event.locals.session = session.session;
+		event.locals.user = session.user;
+	}
+
+	return svelteKitHandler({ event, resolve, auth, building });
+};
+
+export const handle: Handle = handleBetterAuth;

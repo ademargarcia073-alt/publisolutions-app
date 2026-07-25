@@ -1,0 +1,10 @@
+/* Minimal reset. Design tokens (colores, tipografía) llegan con
+   /design-consultation — no se fijan acá para no anticipar decisiones de marca. */
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: system-ui, sans-serif;
+}

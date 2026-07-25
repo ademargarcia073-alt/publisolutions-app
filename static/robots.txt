@@ -1,0 +1,3 @@
+# Herramienta interna, sin contenido público que valga la pena indexar.
+User-agent: *
+Disallow: /
