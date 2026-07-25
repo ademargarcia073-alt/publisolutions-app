@@ -97,10 +97,11 @@ arriba:
 No hay ningún otro camino de auto-promoción a admin en el código — este
 script corre fuera del runtime de la app, a mano, una vez por deploy.
 
-**Tocar flags de un usuario ya aprobado:** a diferencia del primer admin,
-para el resto lo normal es usar `/aprobar-registros` (1.2) o, una vez
-implementada, la pantalla de administración de usuarios (ver plan de tareas,
-T13). Para casos puntuales de CLI (p. ej. testing) sin pasar por SQL a mano:
+**Tocar flags de un usuario ya aprobado:** a diferencia del primer admin, para
+el resto lo normal es usar `/aprobar-registros` (1.2, solo pendientes) o
+`/administrar-usuarios` (T13, para quien ya fue aprobado) — ambas visibles
+desde el header del dashboard solo para admins. Para casos puntuales de CLI
+(p. ej. testing) sin pasar por SQL a mano:
 
 ```bash
 bun run permisos:set admin@cliente.com --vendedor

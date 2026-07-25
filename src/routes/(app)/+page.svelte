@@ -13,6 +13,7 @@
 		<div class="header-actions">
 			{#if data.permisos.esAdmin}
 				<a class="icon-link" href="/aprobar-registros" aria-label="Aprobar registros">👤</a>
+				<a class="icon-link" href="/administrar-usuarios" aria-label="Administrar usuarios">⚙️</a>
 			{/if}
 			<a class="icon-link" href="/notificaciones" aria-label="Notificaciones">🔔</a>
 		</div>
