@@ -83,12 +83,12 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/routes/login`, `/registro`, `/recuperar`, `/pendiente-aprobacion`, `(app)/aprobar-registros`
   - Verify: hecho como parte de T3 (el guard global y las pantallas de auth se construyeron juntos en la misma sesión) — 36/36 tests relevantes pasando (guard + admin-guard)
 
-- [ ] **T8 (P1, human: ~4h / CC: ~30min)** — screens — 1.0 Dashboard (tablero de órdenes + lista de producción libre, query con join — Issue 5), 1.1 Notificaciones
+- [x] **T8 (P1, human: ~4h / CC: ~30min)** — screens — 1.0 Dashboard (tablero de órdenes + lista de producción libre, query con join — Issue 5), 1.1 Notificaciones
   - Surfaced by: Spec sección 1 + Performance Issue 5
   - Files: `src/routes/(app)/+page.svelte`, `+page.server.ts`, `src/routes/(app)/notificaciones`
   - Verify: test de performance/query — una sola consulta para tablero, no N+1 (verificar en logs de Neon o EXPLAIN)
 
-- [ ] **T9 (P1, human: ~6h / CC: ~50min)** — screens — 2.0 Formulario/detalle de orden (crear con `dimension` como 3 campos alto/ancho/unidad, editar mientras nadie tomó, historial de cambios cuando se abre desde 3.0, botón "Devolver a [área anterior]" con nota obligatoria visible solo al responsable actual/admin y solo si no es la primera área)
+- [x] **T9 (P1, human: ~6h / CC: ~50min)** — screens — 2.0 Formulario/detalle de orden (crear con `dimension` como 3 campos alto/ancho/unidad, editar mientras nadie tomó, historial de cambios cuando se abre desde 3.0, botón "Devolver a [área anterior]" con nota obligatoria visible solo al responsable actual/admin y solo si no es la primera área)
   - Surfaced by: Spec sección 1 + decisiones de dimensión estructurada y devolución
   - Files: `src/routes/(app)/ordenes/nueva`, `/ordenes/[id]`
   - Verify: E2E — ciclo de vida completo crear→tomar→completar (todas las áreas)→listo→entregado→cobrado; cancelación desde creada/en_producción; devolver desde área intermedia (vuelve a pool anterior) y verificar que el botón no aparece en la primera área de la secuencia
@@ -98,12 +98,12 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/routes/(app)/ordenes/+page.svelte`, `+page.server.ts`
   - Verify: test que la query soporta filtrar por estado/área/cliente aunque la UI no los exponga todavía
 
-- [x] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
+- [ ] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
   - Surfaced by: Distribution Plan del design doc
   - Files: `wrangler.toml`, configuración del proyecto en Cloudflare dashboard
   - Verify: push a `main` dispara build y deploy automático; smoke test post-deploy (login + ver dashboard)
 
-- [x] **T12 (P2, human: ~15min / CC: ~5min)** — pendiente de info del cliente — Reemplazar el placeholder `TIPOS_TRABAJO` (`letrero`, `gigantografia`, `vinilo`, `otro` — T2) por la lista real de tipos de trabajo del cliente
+- [ ] **T12 (P2, human: ~15min / CC: ~5min)** — pendiente de info del cliente — Reemplazar el placeholder `TIPOS_TRABAJO` (`letrero`, `gigantografia`, `vinilo`, `otro` — T2) por la lista real de tipos de trabajo del cliente
   - Surfaced by: usuario, tras revisar la demo — el placeholder de T2 quedó marcado con un TODO pero sin tarea propia en el plan
   - Files: `src/lib/server/db/orders.schema.ts` (array `TIPOS_TRABAJO`) y donde T7-T10 rendericen el dropdown de tipo de trabajo en el formulario 2.0 (mismo array, no hay un tercer lugar — es texto+set-permitido a nivel de app, no un pg enum, así que no hace falta migración)
   - Verify: el dropdown de 2.0 muestra la lista real; `orderFormSchema` (T5) sigue validando contra el mismo array actualizado sin cambios de código, solo de datos
@@ -124,7 +124,7 @@ _No new tasks from Test Review beyond framework setup — la cobertura se escrib
 - Outside voice: omitido (codex no configurado en este entorno; no crítico para un plan ya validado con 2 rondas de revisión adversarial en la fase de design doc)
 - Parallelization: 4 lanes (A bloqueante, B‖C‖D en paralelo, E después)
 - Post-revisión: usuario resolvió las 2 preguntas abiertas del design doc (dimensión estructurada, flujo de devolución a área anterior) — issues 6 y 7 arriba, incorporadas a T4/T5/T9
-- 12 tareas de implementación (9 P1, 3 P2) — T12 agregada post-revisión, pendiente de que el cliente confirme la lista real de tipos de trabajo
+- 12 tareas de implementación (9 P1, 3 P2) — T1-T10 completas y verificadas (build + typecheck + 91 tests vitest, todos pasando). T11 (deploy) y T12 (lista real de tipo_trabajo, pendiente del cliente) quedan abiertas.
 
 ## VERDICT
 
