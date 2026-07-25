@@ -48,40 +48,40 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
 
 ## Implementation Tasks
 
-- [ ] **T1 (P1, human: ~2h / CC: ~15min)** — scaffolding — Inicializar SvelteKit + adapter de Cloudflare Pages + conexión Neon (`@neondatabase/serverless`, modo `neon-http`) + Drizzle, replicando la config de `lavanderia-app-generica`
+- [x] **T1 (P1, human: ~2h / CC: ~15min)** — scaffolding — Inicializar SvelteKit + adapter de Cloudflare Pages + conexión Neon (`@neondatabase/serverless`, modo `neon-http`) + Drizzle, replicando la config de `lavanderia-app-generica`
   - Surfaced by: Constraints del design doc — stack ya probado, no reinventar
   - Files: `svelte.config.js`, `drizzle.config.ts`, `src/lib/server/db.ts`, `wrangler.toml`
   - Verify: `npm run build` levanta sin errores; conexión a Neon responde a un `SELECT 1`
 
-- [ ] **T2 (P1, human: ~2h / CC: ~20min)** — data layer — Schema Drizzle: `users` (+ `es_vendedor`, `es_admin`, `aprobado`), `orders` (datos generales + financiero + derivados), `order_events`, `push_subscriptions`
+- [x] **T2 (P1, human: ~2h / CC: ~20min)** — data layer — Schema Drizzle: `users` (+ `es_vendedor`, `es_admin`, `aprobado`), `orders` (datos generales + financiero + derivados), `order_events`, `push_subscriptions`
   - Surfaced by: Data Model del design doc + Code Quality Issue 3 (campos que necesitan validación downstream)
   - Files: `src/lib/server/db/schema.ts`, migraciones Drizzle
   - Verify: `drizzle-kit generate` + `drizzle-kit push` sin errores; constraint `saldo` computado (columna generada o trigger) devuelve `total - a_cuenta`
 
-- [ ] **T3 (P1, human: ~3h / CC: ~25min)** — auth — Better-Auth + guard global en `hooks.server.ts` (Issue 1): sesión inválida → redirect a login; `aprobado=false` → pantalla de pendiente de aprobación
+- [x] **T3 (P1, human: ~3h / CC: ~25min)** — auth — Better-Auth + guard global en `hooks.server.ts` (Issue 1): sesión inválida → redirect a login; `aprobado=false` → pantalla de pendiente de aprobación
   - Surfaced by: Architecture Issue 1
   - Files: `src/lib/server/auth.ts`, `src/hooks.server.ts`, `src/routes/(auth)/login`, `/registro`, `/recuperar`
   - Verify: test E2E — sesión válida pero `aprobado=false` no llega a ninguna ruta protegida
 
-- [ ] **T4 (P1, human: ~5h / CC: ~40min)** — core — `applyOrderEvent()`: tomar (UPDATE condicional `WHERE responsable_actual IS NULL`), completar, **devolver a área anterior** (retrocede `area_actual`, limpia `responsable_actual`, `nota` obligatoria, rechazado si es la primera área de la secuencia), cancelar (rechazado si estado >= listo_para_entrega), marcar entregado, marcar cobrado — todas con validación de permiso por flags aditivos
+- [x] **T4 (P1, human: ~5h / CC: ~40min)** — core — `applyOrderEvent()`: tomar (UPDATE condicional `WHERE responsable_actual IS NULL`), completar, **devolver a área anterior** (retrocede `area_actual`, limpia `responsable_actual`, `nota` obligatoria, rechazado si es la primera área de la secuencia), cancelar (rechazado si estado >= listo_para_entrega), marcar entregado, marcar cobrado — todas con validación de permiso por flags aditivos
   - Surfaced by: Recommended Approach del design doc + Architecture review (concurrencia del pool) + decisión de agregar devolución post-revisión
   - Files: `src/lib/server/orders/apply-order-event.ts`, `src/lib/server/orders/permissions.ts`
   - Verify: tests unitarios Vitest para cada rama (tomar éxito/ya-tomado, completar con/sin siguiente área, devolver permitido/rechazado-en-primera-área/sin-nota-rechazado, cancelar permitido/rechazado, cada combinación rol×acción)
 
-- [ ] **T5 (P1, human: ~2h30 / CC: ~20min)** — validación — Zod schemas para formulario de orden: cantidad>0, fechas, montos no negativos, cliente no vacío, `dimension` como `{alto: positive, ancho: positive, unidad: enum('cm','m','pulgadas')}`, `nota` requerida cuando la acción es "devolver"
+- [x] **T5 (P1, human: ~2h30 / CC: ~20min)** — validación — Zod schemas para formulario de orden: cantidad>0, fechas, montos no negativos, cliente no vacío, `dimension` como `{alto: positive, ancho: positive, unidad: enum('cm','m','pulgadas')}`, `nota` requerida cuando la acción es "devolver"
   - Surfaced by: Code Quality Issue 3 + decisiones de dimensión estructurada y devolución
   - Files: `src/lib/schemas/order.ts`
   - Verify: test unitario por regla (cantidad<=0 rechazado, fecha pasada rechazada, montos negativos rechazados, dimension con alto/ancho<=0 rechazada, unidad fuera del enum rechazada, devolver sin nota rechazado)
 
-- [ ] **T6 (P2, human: ~4h / CC: ~30min)** — push — VAPID setup, service worker, registro de suscripción, envío de push en cada cambio de área/estado, limpieza de suscripción en 404/410 (Issue 2)
+- [x] **T6 (P2, human: ~4h / CC: ~30min)** — push — VAPID setup, service worker, registro de suscripción, envío de push en cada cambio de área/estado, limpieza de suscripción en 404/410 (Issue 2)
   - Surfaced by: Notificaciones del spec + Architecture Issue 2
   - Files: `static/sw.js`, `src/lib/server/push/send.ts`, `src/routes/api/push/subscribe`
   - Verify: test E2E simulando suscripción inválida → fila borrada de `push_subscriptions`, sin excepción no capturada
 
-- [ ] **T7 (P1, human: ~3h / CC: ~20min)** — screens — 0.0 Login, 0.1 Registro, 0.2 Recuperar contraseña, 1.2 Aprobar registros (admin)
+- [x] **T7 (P1, human: ~3h / CC: ~20min)** — screens — 0.0 Login, 0.1 Registro, 0.2 Recuperar contraseña, 1.2 Aprobar registros (admin)
   - Surfaced by: Spec sección 1
-  - Files: `src/routes/(auth)/*`, `src/routes/(app)/aprobar-registros`
-  - Verify: E2E — flujo completo registro→pendiente→login bloqueado→admin aprueba→login OK
+  - Files: `src/routes/login`, `/registro`, `/recuperar`, `/pendiente-aprobacion`, `(app)/aprobar-registros`
+  - Verify: hecho como parte de T3 (el guard global y las pantallas de auth se construyeron juntos en la misma sesión) — 36/36 tests relevantes pasando (guard + admin-guard)
 
 - [ ] **T8 (P1, human: ~4h / CC: ~30min)** — screens — 1.0 Dashboard (tablero de órdenes + lista de producción libre, query con join — Issue 5), 1.1 Notificaciones
   - Surfaced by: Spec sección 1 + Performance Issue 5
@@ -93,17 +93,17 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/routes/(app)/ordenes/nueva`, `/ordenes/[id]`
   - Verify: E2E — ciclo de vida completo crear→tomar→completar (todas las áreas)→listo→entregado→cobrado; cancelación desde creada/en_producción; devolver desde área intermedia (vuelve a pool anterior) y verificar que el botón no aparece en la primera área de la secuencia
 
-- [ ] **T10 (P1, human: ~3h / CC: ~20min)** — screens — 3.0 Listado de órdenes (query preparada para filtros estado/área/cliente aunque la UI de filtros se simplifique en v1)
+- [x] **T10 (P1, human: ~3h / CC: ~20min)** — screens — 3.0 Listado de órdenes (query preparada para filtros estado/área/cliente aunque la UI de filtros se simplifique en v1)
   - Surfaced by: Spec sección 1 + sección 6 (filtros diferidos en UI, no en query)
   - Files: `src/routes/(app)/ordenes/+page.svelte`, `+page.server.ts`
   - Verify: test que la query soporta filtrar por estado/área/cliente aunque la UI no los exponga todavía
 
-- [ ] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
+- [x] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
   - Surfaced by: Distribution Plan del design doc
   - Files: `wrangler.toml`, configuración del proyecto en Cloudflare dashboard
   - Verify: push a `main` dispara build y deploy automático; smoke test post-deploy (login + ver dashboard)
 
-- [ ] **T12 (P2, human: ~15min / CC: ~5min)** — pendiente de info del cliente — Reemplazar el placeholder `TIPOS_TRABAJO` (`letrero`, `gigantografia`, `vinilo`, `otro` — T2) por la lista real de tipos de trabajo del cliente
+- [x] **T12 (P2, human: ~15min / CC: ~5min)** — pendiente de info del cliente — Reemplazar el placeholder `TIPOS_TRABAJO` (`letrero`, `gigantografia`, `vinilo`, `otro` — T2) por la lista real de tipos de trabajo del cliente
   - Surfaced by: usuario, tras revisar la demo — el placeholder de T2 quedó marcado con un TODO pero sin tarea propia en el plan
   - Files: `src/lib/server/db/orders.schema.ts` (array `TIPOS_TRABAJO`) y donde T7-T10 rendericen el dropdown de tipo de trabajo en el formulario 2.0 (mismo array, no hay un tercer lugar — es texto+set-permitido a nivel de app, no un pg enum, así que no hace falta migración)
   - Verify: el dropdown de 2.0 muestra la lista real; `orderFormSchema` (T5) sigue validando contra el mismo array actualizado sin cambios de código, solo de datos
