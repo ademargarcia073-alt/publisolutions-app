@@ -98,7 +98,7 @@ silencioso; guard de auth → redirect visible, no acceso silencioso.
   - Files: `src/routes/(app)/ordenes/+page.svelte`, `+page.server.ts`
   - Verify: test que la query soporta filtrar por estado/área/cliente aunque la UI no los exponga todavía
 
-- [ ] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
+- [x] **T11 (P2, human: ~2h / CC: ~15min)** — deploy — Config de Cloudflare Pages (build command, env vars: connection string de Neon, claves VAPID)
   - Surfaced by: Distribution Plan del design doc
   - Files: `wrangler.toml`, configuración del proyecto en Cloudflare dashboard
   - Verify: push a `main` dispara build y deploy automático; smoke test post-deploy (login + ver dashboard)
