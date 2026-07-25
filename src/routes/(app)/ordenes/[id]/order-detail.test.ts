@@ -92,14 +92,18 @@ describe('/ordenes/[id] — load computa los flags de permiso', () => {
 
 	it('puedeEditar=true para el creador mientras nadie tomó la orden', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder()]);
-		const result = await load(fakeEvent(VENDEDOR, 'vendedor-1'));
+		const result = (await load(fakeEvent(VENDEDOR, 'vendedor-1'))) as {
+			flags: Record<string, boolean>;
+		};
 		expect(result.flags.puedeEditar).toBe(true);
 		expect(result.flags.puedeTomar).toBe(false); // vendedor no puede tomar
 	});
 
 	it('puedeTomar=true para producción cuando el área está libre', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder()]);
-		const result = await load(fakeEvent(PRODUCCION, 'prod-1'));
+		const result = (await load(fakeEvent(PRODUCCION, 'prod-1'))) as {
+			flags: Record<string, boolean>;
+		};
 		expect(result.flags.puedeTomar).toBe(true);
 		expect(result.flags.puedeEditar).toBe(false); // producción nunca edita datos generales
 	});
