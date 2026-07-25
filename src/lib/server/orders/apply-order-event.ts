@@ -3,6 +3,7 @@ import { and, eq, isNull, type SQL } from 'drizzle-orm';
 import { orders, type OrderEstado } from '$lib/server/db/orders.schema';
 import { orderEvents } from '$lib/server/db/order-events.schema';
 import type { Permisos } from '$lib/server/permissions';
+import { notifyOrderChange } from '$lib/server/push/notify';
 
 export type ApplyOrderEventResult = { ok: true } | { ok: false; error: string };
 
@@ -70,6 +71,10 @@ async function executeTransition(
 	}
 
 	await db.insert(orderEvents).values({ orderId, usuarioId: userId, ...plan.event });
+
+	// Doble canal (spec sección 5) — best-effort, nunca revierte la
+	// transición que ya se aplicó arriba (ver notify.ts).
+	await notifyOrderChange(order, plan.event);
 
 	return { ok: true };
 }

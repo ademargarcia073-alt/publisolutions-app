@@ -13,6 +13,14 @@ vi.mock('$lib/server/db', () => ({
 	}
 }));
 
+// notifyOrderChange tiene su propia suite (notify.test.ts) — acá se
+// no-opea para que estos tests queden enfocados en la lógica de la
+// transición, sin arrastrar sus propias queries de destinatarios/push.
+const notifyOrderChangeMock = vi.fn().mockResolvedValue(undefined);
+vi.mock('$lib/server/push/notify', () => ({
+	notifyOrderChange: notifyOrderChangeMock
+}));
+
 const { tomar, completar, devolver, cancelar, entregar, cobrar } = await import(
 	'./apply-order-event'
 );
@@ -38,6 +46,7 @@ beforeEach(() => {
 	selectWhereMock.mockReset();
 	updateReturningMock.mockReset();
 	insertValuesMock.mockReset();
+	notifyOrderChangeMock.mockClear();
 });
 
 describe('tomar', () => {
@@ -57,6 +66,7 @@ describe('tomar', () => {
 		expect(insertValuesMock).toHaveBeenCalledWith(
 			expect.objectContaining({ campoOArea: 'responsable_actual', valorNuevo: 'prod-2' })
 		);
+		expect(notifyOrderChangeMock).toHaveBeenCalledOnce();
 	});
 
 	it('devuelve conflicto si ya fue tomado (rowCount=0 en el UPDATE condicional)', async () => {
@@ -67,6 +77,7 @@ describe('tomar', () => {
 
 		expect(result).toEqual({ ok: false, error: expect.stringContaining('cambió mientras tanto') });
 		expect(insertValuesMock).not.toHaveBeenCalled();
+		expect(notifyOrderChangeMock).not.toHaveBeenCalled();
 	});
 
 	it('rechaza si el estado no es en_producción', async () => {

@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import type { LayoutServerLoad } from './$types';
 
 // La sesión + aprobado ya está garantizada acá — hooks.server.ts redirige
@@ -8,6 +9,10 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = (event) => {
 	return {
 		user: event.locals.user!,
-		permisos: event.locals.permisos!
+		permisos: event.locals.permisos!,
+		// Clave pública VAPID — es pública por diseño (Web Push la expone al
+		// navegador), no hace falta el prefijo PUBLIC_ de SvelteKit para esto:
+		// alcanza con pasarla como page data.
+		vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null
 	};
 };

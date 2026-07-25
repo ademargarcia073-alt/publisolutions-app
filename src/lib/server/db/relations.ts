@@ -4,6 +4,7 @@ import { userPermissions } from './permissions.schema';
 import { orders } from './orders.schema';
 import { orderEvents } from './order-events.schema';
 import { pushSubscriptions } from './push-subscriptions.schema';
+import { notifications } from './notifications.schema';
 
 // Todas las relaciones cruzadas viven acá, en un archivo separado de cada
 // pgTable — evita ciclos de import entre orders.schema/order-events.schema
@@ -17,7 +18,8 @@ export const userRelationsApp = relations(user, ({ one, many }) => ({
 	}),
 	ordenesComoVendedor: many(orders, { relationName: 'vendedor' }),
 	ordenesComoResponsable: many(orders, { relationName: 'responsable' }),
-	pushSubscriptions: many(pushSubscriptions)
+	pushSubscriptions: many(pushSubscriptions),
+	notifications: many(notifications)
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -31,7 +33,8 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
 		references: [user.id],
 		relationName: 'responsable'
 	}),
-	eventos: many(orderEvents)
+	eventos: many(orderEvents),
+	notificaciones: many(notifications)
 }));
 
 export const orderEventsRelations = relations(orderEvents, ({ one }) => ({
@@ -41,4 +44,9 @@ export const orderEventsRelations = relations(orderEvents, ({ one }) => ({
 
 export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
 	usuario: one(user, { fields: [pushSubscriptions.userId], references: [user.id] })
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+	usuario: one(user, { fields: [notifications.userId], references: [user.id] }),
+	orden: one(orders, { fields: [notifications.orderId], references: [orders.id] })
 }));

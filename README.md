@@ -17,6 +17,22 @@ bun run db:push        # aplica el schema a la base de Neon
 bun run dev
 ```
 
+### Notificaciones push (Web Push / VAPID)
+
+Generar el par de claves una sola vez por deploy (`web-push` ya está
+instalado como dependencia, así que `bunx` lo encuentra sin instalar nada
+extra):
+
+```bash
+bunx web-push generate-vapid-keys
+```
+
+Completar en `.env`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (las que imprime
+el comando de arriba) y `VAPID_SUBJECT` (un `mailto:` de contacto — lo exige
+el protocolo Web Push, no es configuración de esta app). Sin estas tres
+variables, `sendPushToUser` falla explícitamente en vez de enviar push a
+medias.
+
 ## Deploy — paso único de bootstrap
 
 El primer usuario admin no tiene a nadie que lo apruebe (1.2 "Aprobar

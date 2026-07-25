@@ -8,6 +8,13 @@
       "when": 1784989419992,
       "tag": "0000_open_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784992297754,
+      "tag": "0001_oval_blackheart",
+      "breakpoints": true
     }
   ]
 }

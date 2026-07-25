@@ -4,9 +4,11 @@
 -->
 <script lang="ts">
 	import type { PageData } from './$types';
+	import ActivarNotificaciones from '$lib/components/ActivarNotificaciones.svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
 
 <h1>Hola, {data.user.name}</h1>
 <p>Sesión válida y aprobada. Dashboard real llega en T8.</p>
+<ActivarNotificaciones vapidPublicKey={data.vapidPublicKey} />
