@@ -1,20 +1,21 @@
 import { db } from '$lib/server/db';
 import { and, eq, isNull, type SQL } from 'drizzle-orm';
-import { orders, type OrderEstado } from '$lib/server/db/orders.schema';
+import { orders } from '$lib/server/db/orders.schema';
 import { orderEvents } from '$lib/server/db/order-events.schema';
 import type { Permisos } from '$lib/server/permissions';
 import { notifyOrderChange } from '$lib/server/push/notify';
+import {
+	puedeTomar,
+	puedeCompletar,
+	puedeDevolver,
+	puedeCancelar,
+	puedeEntregar,
+	puedeCobrar
+} from './permissions';
 
 export type ApplyOrderEventResult = { ok: true } | { ok: false; error: string };
 
 type OrderRow = typeof orders.$inferSelect;
-
-// "Producción" no es un flag propio — todo usuario aprobado que no es
-// vendedor ni admin es, por definición, producción (spec sección 2,
-// docs/design-orden-trabajo.md).
-function isProduccion(permisos: Permisos): boolean {
-	return permisos.aprobado && !permisos.esVendedor && !permisos.esAdmin;
-}
 
 type EventFields = {
 	campoOArea: string;
@@ -34,10 +35,12 @@ type TransitionPlan = {
 };
 
 // Núcleo compartido por las 6 transiciones: lee la orden, valida (permiso +
-// estado) y computa la transición en JS (buildTransition), escribe con un
-// UPDATE condicional con RETURNING (detecta condición de carrera), y solo si
-// esa escritura afectó una fila inserta el evento de historial — así nunca
-// queda un evento huérfano por una orden que en realidad no cambió.
+// estado — vía los predicados de ./permissions, misma fuente de verdad que
+// usa 2.0 para decidir qué botones mostrar) y computa la transición en JS
+// (buildTransition), escribe con un UPDATE condicional con RETURNING
+// (detecta condición de carrera), y solo si esa escritura afectó una fila
+// inserta el evento de historial — así nunca queda un evento huérfano por
+// una orden que en realidad no cambió.
 //
 // Precisión sobre atomicidad (ver docs/design-orden-trabajo.md): el UPDATE
 // condicional en sí es atómico (Postgres garantiza el chequeo+escritura de
@@ -79,26 +82,18 @@ async function executeTransition(
 	return { ok: true };
 }
 
-function estadoInvalidoError(estado: OrderEstado, accion: string): { error: string } {
-	return { error: `No se puede ${accion} una orden en estado "${estado}"` };
-}
-
 // ── tomar ──────────────────────────────────────────────────────────────────
 export async function tomar(
 	orderId: number,
 	userId: string,
 	permisos: Permisos
 ): Promise<ApplyOrderEventResult> {
-	if (!(permisos.esAdmin || isProduccion(permisos))) {
-		return { ok: false, error: 'No autorizado para tomar trabajos de producción' };
-	}
-
 	return executeTransition(orderId, userId, (order) => {
-		if (order.estado !== 'en_producción' || !order.areaActual) {
-			return estadoInvalidoError(order.estado, 'tomar');
+		if (!puedeTomar(order, permisos)) {
+			return { error: `No se puede tomar esta orden (estado "${order.estado}" o ya tomada)` };
 		}
 		return {
-			whereExtra: and(eq(orders.areaActual, order.areaActual), isNull(orders.responsableActual))!,
+			whereExtra: and(eq(orders.areaActual, order.areaActual!), isNull(orders.responsableActual))!,
 			set: { responsableActual: userId },
 			event: { campoOArea: 'responsable_actual', valorAnterior: null, valorNuevo: userId }
 		};
@@ -112,20 +107,17 @@ export async function completar(
 	permisos: Permisos
 ): Promise<ApplyOrderEventResult> {
 	return executeTransition(orderId, userId, (order) => {
-		if (!(permisos.esAdmin || order.responsableActual === userId)) {
-			return { error: 'Solo quien tomó el trabajo (o un admin) puede completarlo' };
-		}
-		if (order.estado !== 'en_producción' || !order.areaActual) {
-			return estadoInvalidoError(order.estado, 'completar');
+		if (!puedeCompletar(order, userId, permisos)) {
+			return { error: `No se puede completar esta orden (estado "${order.estado}" o no sos el responsable)` };
 		}
 
-		const currentIndex = order.areasSeleccionadas.indexOf(order.areaActual);
+		const currentIndex = order.areasSeleccionadas.indexOf(order.areaActual!);
 		const siguienteArea = order.areasSeleccionadas[currentIndex + 1] ?? null;
 
 		return {
 			whereExtra: and(
-				eq(orders.areaActual, order.areaActual),
-				eq(orders.responsableActual, userId)
+				eq(orders.areaActual, order.areaActual!),
+				eq(orders.responsableActual, order.responsableActual!)
 			)!,
 			set: siguienteArea
 				? { areaActual: siguienteArea, responsableActual: null }
@@ -151,23 +143,19 @@ export async function devolver(
 	}
 
 	return executeTransition(orderId, userId, (order) => {
-		if (!(permisos.esAdmin || order.responsableActual === userId)) {
-			return { error: 'Solo quien tiene el trabajo (o un admin) puede devolverlo' };
-		}
-		if (order.estado !== 'en_producción' || !order.areaActual) {
-			return estadoInvalidoError(order.estado, 'devolver');
+		if (!puedeDevolver(order, userId, permisos)) {
+			return {
+				error: `No se puede devolver esta orden (estado "${order.estado}", ya en la primera área, o no sos el responsable)`
+			};
 		}
 
-		const currentIndex = order.areasSeleccionadas.indexOf(order.areaActual);
-		if (currentIndex <= 0) {
-			return { error: 'No hay un área anterior a la cual devolver' };
-		}
+		const currentIndex = order.areasSeleccionadas.indexOf(order.areaActual!);
 		const areaAnterior = order.areasSeleccionadas[currentIndex - 1];
 
 		return {
 			whereExtra: and(
-				eq(orders.areaActual, order.areaActual),
-				eq(orders.responsableActual, userId)
+				eq(orders.areaActual, order.areaActual!),
+				eq(orders.responsableActual, order.responsableActual!)
 			)!,
 			set: { areaActual: areaAnterior, responsableActual: null },
 			event: {
@@ -187,12 +175,8 @@ export async function cancelar(
 	permisos: Permisos
 ): Promise<ApplyOrderEventResult> {
 	return executeTransition(orderId, userId, (order) => {
-		const esCreador = permisos.esVendedor && order.vendedorId === userId;
-		if (!(permisos.esAdmin || esCreador)) {
-			return { error: 'Solo el vendedor creador (o un admin) puede cancelar' };
-		}
-		if (order.estado !== 'creada' && order.estado !== 'en_producción') {
-			return estadoInvalidoError(order.estado, 'cancelar');
+		if (!puedeCancelar(order, userId, permisos)) {
+			return { error: `No se puede cancelar una orden en estado "${order.estado}", o no sos el creador` };
 		}
 
 		return {
@@ -210,12 +194,10 @@ export async function entregar(
 	permisos: Permisos
 ): Promise<ApplyOrderEventResult> {
 	return executeTransition(orderId, userId, (order) => {
-		const esCreador = permisos.esVendedor && order.vendedorId === userId;
-		if (!(permisos.esAdmin || esCreador)) {
-			return { error: 'Solo el vendedor creador (o un admin) puede marcar entregado' };
-		}
-		if (order.estado !== 'listo_para_entrega') {
-			return estadoInvalidoError(order.estado, 'marcar entregado');
+		if (!puedeEntregar(order, userId, permisos)) {
+			return {
+				error: `No se puede marcar entregado una orden en estado "${order.estado}", o no sos el creador`
+			};
 		}
 
 		return {
@@ -232,16 +214,9 @@ export async function cobrar(
 	userId: string,
 	permisos: Permisos
 ): Promise<ApplyOrderEventResult> {
-	if (!permisos.esAdmin) {
-		return { ok: false, error: 'Solo un admin puede marcar cobro' };
-	}
-
 	return executeTransition(orderId, userId, (order) => {
-		if (order.estado !== 'entregado') {
-			return { error: 'Solo se puede marcar cobro de una orden ya entregada' };
-		}
-		if (order.estadoCobro === 'cobrado') {
-			return { error: 'Esta orden ya fue marcada como cobrada' };
+		if (!puedeCobrar(order, permisos)) {
+			return { error: 'Solo un admin puede marcar cobro de una orden entregada y aún pendiente' };
 		}
 
 		return {

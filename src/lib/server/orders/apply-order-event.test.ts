@@ -51,9 +51,10 @@ beforeEach(() => {
 
 describe('tomar', () => {
 	it('rechaza a un vendedor puro (no es producción ni admin)', async () => {
+		selectWhereMock.mockResolvedValueOnce([baseOrder({ responsableActual: null })]);
 		const result = await tomar(1, 'v-1', VENDEDOR);
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('No autorizado') });
-		expect(selectWhereMock).not.toHaveBeenCalled();
+		expect(result).toEqual({ ok: false, error: expect.stringContaining('No se puede tomar') });
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('permite a producción tomar un pool libre', async () => {
@@ -115,7 +116,8 @@ describe('completar', () => {
 	it('rechaza a alguien que no es el responsable actual ni admin', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder({ responsableActual: 'prod-1' })]);
 		const result = await completar(1, 'prod-OTRO', PRODUCCION);
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('quien tomó') });
+		expect(result.ok).toBe(false);
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('permite a un admin completar el trabajo de otra persona', async () => {
@@ -136,7 +138,8 @@ describe('devolver — extensión post-revisión (no estaba en el spec original)
 	it('rechaza si el área actual es la primera de la secuencia', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder({ areaActual: 'diseño' })]);
 		const result = await devolver(1, 'prod-1', PRODUCCION, 'defecto encontrado');
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('No hay un área anterior') });
+		expect(result.ok).toBe(false);
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('retrocede una posición y limpia responsable_actual', async () => {
@@ -179,7 +182,8 @@ describe('cancelar', () => {
 	it('rechaza a un vendedor que no es el creador', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder({ estado: 'creada', vendedorId: 'vendedor-1' })]);
 		const result = await cancelar(1, 'vendedor-OTRO', VENDEDOR);
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('vendedor creador') });
+		expect(result.ok).toBe(false);
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('permite a un admin cancelar aunque no sea el creador', async () => {
@@ -207,9 +211,10 @@ describe('entregar', () => {
 
 describe('cobrar', () => {
 	it('rechaza a cualquiera que no sea admin', async () => {
+		selectWhereMock.mockResolvedValueOnce([baseOrder({ estado: 'entregado', estadoCobro: 'pendiente' })]);
 		const result = await cobrar(1, 'vendedor-1', VENDEDOR);
 		expect(result).toEqual({ ok: false, error: expect.stringContaining('Solo un admin') });
-		expect(selectWhereMock).not.toHaveBeenCalled();
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('rechaza si la orden no está entregada', async () => {
@@ -221,7 +226,8 @@ describe('cobrar', () => {
 	it('rechaza si ya fue marcada como cobrada', async () => {
 		selectWhereMock.mockResolvedValueOnce([baseOrder({ estado: 'entregado', estadoCobro: 'cobrado' })]);
 		const result = await cobrar(1, 'admin-1', ADMIN);
-		expect(result).toEqual({ ok: false, error: expect.stringContaining('ya fue marcada') });
+		expect(result.ok).toBe(false);
+		expect(insertValuesMock).not.toHaveBeenCalled();
 	});
 
 	it('marca cobrado cuando la orden está entregada y pendiente', async () => {
